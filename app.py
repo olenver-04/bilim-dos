@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from io import BytesIO, StringIO
 from pathlib import Path
 import qrcode
+from scene import render_scene, effect_settings
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -84,48 +85,8 @@ def load_css():
     stylesheet = Path(__file__).with_name('style.css')
     st.markdown('<style>' + stylesheet.read_text(encoding='utf-8') + '</style>', unsafe_allow_html=True)
 
-POSITIONS = ([(x, 90) for x in (275, 495, 715, 935, 1155)]
-             + [(140,y) for y in (200,300,400,500,600,700,800)]
-             + [(1290,y) for y in (200,300,400,500,600,700,800)]
-             + [(x,820) for x in (275,495,715,935,1155)])
-PALETTE = [('#365FCF','#EDF2FF'),('#E68A42','#FFF2E5'),('#139C89','#E5F8F5'),('#BA619D','#FFF0F8'),('#8570D1','#F2EEFF'),('#D26E62','#FFF0EC')]
 
-def cluster(rows, fresh, school):
-    lines, cards = [], []
-    for r,(x,y) in zip(reversed(rows), POSITIONS):
-        name, answer, ident = clean(r['name']),clean(r['answer']),int(r['id'])
-        accent,paper = PALETTE[(ident-1)%len(PALETTE)]
-        new = ' fresh' if ident in fresh else ''
-        lines.append(f'<path class="ray{new}" d="M720 455 Q{(720+x)/2:.0f} {(455+y)/2-35:.0f} {x} {y}" fill="none" stroke="{accent}" stroke-width="3" stroke-dasharray="7 9" opacity=".48"/>')
-        cards.append(f'<g class="note{new}" transform="translate({x} {y})" tabindex="0"><title>{esc(name)} — {esc(answer)}</title><rect x="-100" y="-35" width="200" height="70" rx="17" fill="{paper}" stroke="{accent}" stroke-width="2.6"/><circle cx="-82" cy="-20" r="5" fill="{accent}"/><text x="0" y="-3" class="answer" text-anchor="middle">{esc(short(answer,24))}</text><text x="0" y="20" class="name" text-anchor="middle" fill="{accent}">{esc(short(name,23))}</text></g>')
-    # Учебник и добрый школьный персонаж в центре схемы.
-    center=f'''<g class="mascot"><ellipse cx="720" cy="620" rx="218" ry="29" fill="#BACAF0" opacity=".35"/>
-      <path d="M510 490 Q620 453 720 515 Q820 453 930 490 L930 626 Q820 594 720 649 Q620 594 510 626Z" fill="white" stroke="#355BC4" stroke-width="9"/>
-      <path d="M720 515V648" stroke="#355BC4" stroke-width="7"/><path d="M536 517Q630 496 690 540 M536 544Q630 523 690 565 M750 540Q820 495 904 517 M750 565Q830 524 904 543" fill="none" stroke="#DCE6FF" stroke-width="7" stroke-linecap="round"/>
-      <path d="M720 515V428" stroke="#FFB44D" stroke-width="15" stroke-linecap="round"/>
-      <circle cx="720" cy="355" r="87" fill="#FFD577" stroke="#DC9846" stroke-width="7"/>
-      <path d="M650 305Q720 264 790 305" fill="none" stroke="#A05E35" stroke-width="11" stroke-linecap="round"/>
-      <circle cx="689" cy="353" r="7" fill="#4B3E45"/><circle cx="752" cy="353" r="7" fill="#4B3E45"/><path d="M690 383Q721 410 752 383" fill="none" stroke="#A75E58" stroke-width="7" stroke-linecap="round"/>
-      <circle cx="666" cy="374" r="13" fill="#FBA89B" opacity=".75"/><circle cx="772" cy="374" r="13" fill="#FBA89B" opacity=".75"/>
-      <path d="M642 288L720 241 798 288 720 321Z" fill="#3158C8" stroke="#24499F" stroke-width="5"/><path d="M780 289V333" stroke="#24499F" stroke-width="6"/><circle cx="780" cy="337" r="9" fill="#FFB44D"/>
-      <path d="M647 290V270Q719 238 793 270V293" fill="none" stroke="#3158C8" stroke-width="17"/>
-      <path d="M610 460Q563 424 541 453 M828 460Q871 424 898 453" fill="none" stroke="#3158C8" stroke-width="12" stroke-linecap="round"/></g>
-      <rect x="555" y="657" width="330" height="72" rx="30" fill="#3158C8" stroke="white" stroke-width="5"/>
-      <text x="720" y="704" text-anchor="middle" font-size="30" font-weight="900" fill="white">{esc(short(school,25))}</text>
-      <text x="720" y="766" text-anchor="middle" font-size="23" font-weight="800" fill="#405F9F">Наши мысли после урока</text>'''
-    source = '<!doctype html><html lang="ru"><head><meta charset="utf-8"><style>' + '''
-    html,body{padding:0;margin:0;width:100%;height:100%;overflow:hidden;background:#EFF5FF}
-    svg{display:block;width:100%;height:100%;font-family:Arial,'DejaVu Sans',sans-serif}
-    .answer{font-size:17px;font-weight:800;fill:#263967}.name{font-size:13px;font-weight:700}
-    .note{cursor:help;filter:drop-shadow(0 4px 7px #233A6518)}
-    .note:hover,.note:focus{filter:drop-shadow(0 5px 14px #29447C50);outline:none}
-    .note.fresh{animation:pop .85s cubic-bezier(.16,1.3,.36,1) both;transform-box:fill-box;transform-origin:center}
-    .ray.fresh{animation:fade .85s ease-out both}
-    @keyframes pop{from{opacity:0;scale:.6}to{opacity:1;scale:1}}
-    @keyframes fade{from{opacity:0}to{opacity:.48}}
-    @media(prefers-reduced-motion:reduce){.note.fresh,.ray.fresh{animation:none}}
-    '''+'</style></head><body><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" aria-label="Интерактивные ответы учеников" role="img"><defs><radialGradient id="bg"><stop stop-color="white"/><stop offset="1" stop-color="#ECF3FF"/></radialGradient><pattern id="dots" width="42" height="42" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="2" fill="#B8C9E8" opacity=".45"/></pattern></defs><rect width="1440" height="900" rx="30" fill="url(#bg)"/><rect width="1440" height="900" rx="30" fill="url(#dots)"/><circle cx="720" cy="460" r="263" fill="#F8FAFF" stroke="#DAE5FC" stroke-width="3" stroke-dasharray="9 12"/>' + ''.join(lines)+center+''.join(cards)+'</svg></body></html>'
-    components.html(source, height=690, scrolling=False)
+# Визуальный кластер вынесен в scene.py; CSS/JS/JSON находятся рядом с app.py.
 
 def header(label, s):
     st.markdown(f'<div class="brand">📚 {esc(s["school"])} &nbsp;·&nbsp; {esc(label)}</div>',unsafe_allow_html=True)
@@ -149,16 +110,17 @@ def wall(student_url):
             unsafe_allow_html=True,
         )
     st.markdown('<div class="kicker">НАША ОБЩАЯ РЕФЛЕКСИЯ</div><div class="heading">Каждая мысль важна 🌟</div>',unsafe_allow_html=True)
-    @st.fragment(run_every='3s')
+    effects = effect_settings()
+    @st.fragment(run_every=f"{effects['refresh_seconds']}s")
     def live():
-        recent=all_answers(MAX_CARDS);count=total_answers()
+        recent=all_answers(MAX_CARDS)
         ids={int(r['id']) for r in recent};old=st.session_state.get('previous_ids')
         fresh=ids-old if old is not None else set();st.session_state['previous_ids']=ids
         # Публичный экран не показывает количество ответов и технический статус.
         st.markdown('<div class="wall-visual-gap" aria-hidden="true"></div>',
                     unsafe_allow_html=True)
-        cluster(recent,fresh,s['school'])
-        if not count: st.info('✨ Здесь скоро появятся первые ответы!')
+        render_scene(recent, fresh, s['school'], effects=effects)
+        if not recent: st.info('✨ Здесь скоро появятся первые ответы!')
         with st.expander('📃 Смотреть ответы списком'):
             for r in recent: st.markdown(f'**{esc(r["name"])}:** {esc(r["answer"])}')
     live()

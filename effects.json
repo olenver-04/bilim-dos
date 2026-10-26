@@ -1,0 +1,12 @@
+{
+  "enabled": true,
+  "ambient_animation": true,
+  "arrival_animation": true,
+  "particles_enabled": true,
+  "toast_enabled": true,
+  "particle_count": 18,
+  "max_celebrations_per_refresh": 3,
+  "arrival_duration_ms": 1450,
+  "toast_duration_ms": 3600,
+  "refresh_seconds": 3
+}

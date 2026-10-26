@@ -172,3 +172,23 @@ html,body,.stApp,.stApp button,.stApp input,.stApp textarea{font-family:'Nunito'
   .qr-action {transition: none;}
   .qr-action:hover {transform: none;}
 }
+
+/* V4 / Cinematic — мягкая микродинамика оболочки сайта.
+   Основные эффекты карты находятся в scene.css; этот CSS отвечает за страницу. */
+.hero { background-size: 135% 135%; }
+@media (prefers-reduced-motion: no-preference) {
+  .hero { animation: hero-light 11s ease-in-out infinite alternate; }
+  .qr-panel { animation: qr-breathe 7s ease-in-out infinite; }
+  .qr-title-icon { display:inline-block; animation: phone-wave 5s ease-in-out infinite; }
+  [data-testid="stForm"] { animation: form-reveal .6s cubic-bezier(.17,.9,.25,1) both; }
+  .side-card { animation: card-reveal .7s both; }
+  .side-card.safety { animation-delay: .13s; }
+}
+@keyframes hero-light {from{background-position:0% 50%}to{background-position:100% 50%}}
+@keyframes qr-breathe {0%,100%{box-shadow:0 14px 32px rgba(49,88,200,.10)}50%{box-shadow:0 16px 38px rgba(49,88,200,.16)}}
+@keyframes phone-wave {0%,88%,100%{transform:rotate(0)}91%{transform:rotate(-14deg)}95%{transform:rotate(9deg)}}
+@keyframes form-reveal {from{opacity:.2;transform:translateY(13px)}to{opacity:1;transform:translateY(0)}}
+@keyframes card-reveal {from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce) {
+  .hero,.qr-panel,.qr-title-icon,[data-testid="stForm"],.side-card {animation:none!important}
+}
