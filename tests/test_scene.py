@@ -44,3 +44,21 @@ def test_effect_limits():
 def test_json_file():
     path = Path(__file__).resolve().parent.parent / 'effects.json'
     assert isinstance(json.loads(path.read_text(encoding='utf-8')), dict)
+
+
+def test_finale_payload_and_html_safety():
+    from bs4 import BeautifulSoup
+    from datetime import datetime
+    controls = {'fx_finale': True, 'show_started_at': '2026-10-26T15:00:00+00:00'}
+    markup = build_scene([], set(), '<b>Hello</b>', controls=controls,
+                         lesson='</script><img src=x onerror=alert(9)>')
+    assert 'Спасибо за ваши мысли!' in markup
+    assert 'finale-layer' in markup
+    assert 'show_started_at' in markup
+    assert '&lt;img src=x' in markup
+    assert '</script><img src=x' not in markup
+    soup = BeautifulSoup(markup, 'html.parser')
+    assert soup.find(id='reflection-scene') is not None
+    assert soup.find(id='scene-data') is not None
+    assert datetime.fromisoformat(__import__('json').loads(
+        soup.find(id='scene-data').string)['server_now'])
