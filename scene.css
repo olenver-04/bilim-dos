@@ -214,3 +214,33 @@ body { background: #EFF5FF; font-family: 'Trebuchet MS', Arial, sans-serif; }
   .scene.finale-static .finale-layer{display:grid;opacity:1;visibility:visible}
   .scene .mascot-speech,.scene .arm-right{animation:none!important}
 }
+
+/* BILIM DOS 5.1 · сцена без ослепительно-белого фона.
+   SVG-градиенты тонируем через CSS, не меняя Python и JS.
+   Все три темы из панели учителя продолжают работать. */
+body { background: #dce6f2; }
+.scene {
+  background: radial-gradient(ellipse at 50% 35%, #dfe9f5 0%, #d1deed 62%, #c3d2e6 100%);
+  border-color: #bdcce1;
+  box-shadow: inset 0 0 58px rgba(70, 103, 159, .075), 0 12px 30px rgba(37, 62, 105, .075);
+}
+.scene::after { border-color: rgba(243,247,255,.36); }
+#bg stop:first-child { stop-color: #e2eaf4; }
+#bg stop:last-child { stop-color: #cbd9e9; }
+#bg-lavender stop:first-child { stop-color: #e9e4f1; }
+#bg-lavender stop:last-child { stop-color: #d8cfeb; }
+#bg-mint stop:first-child { stop-color: #e0eee9; }
+#bg-mint stop:last-child { stop-color: #cce1d8; }
+.scene[data-theme="lavender"] {
+  background: radial-gradient(ellipse at 50% 35%, #e9e4f1 0%, #d8cfeb 100%);
+}
+.scene[data-theme="mint"] {
+  background: radial-gradient(ellipse at 50% 35%, #e0eee9 0%, #cce1d8 100%);
+}
+.new-toast {
+  background: rgba(229,237,249,.97);
+  border-color: #bed0e7;
+  box-shadow: 0 12px 36px rgba(40,68,116,.21), inset 0 1px rgba(255,255,255,.55);
+}
+.toast-symbol { background: #f0e2c9; }
+
