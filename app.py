@@ -1,5 +1,5 @@
 from __future__ import annotations
-import csv, hmac, html, os, sqlite3
+import base64, csv, hmac, html, os, sqlite3
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from io import BytesIO, StringIO
@@ -79,105 +79,10 @@ def qr(url):
     code.make_image(fill_color='#3158C8', back_color='white').save(output, format='PNG')
     return output.getvalue()
 
-CSS = '''<style>
-@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700;800;900&display=swap');
-:root{--indigo:#365CD3;--deep:#203563;--sky:#EFF5FF;--muted:#60749C;--border:#E1E9FA;--mint:#E7F8F1}
-*,*::before,*::after{box-sizing:border-box}
-.stApp{background:radial-gradient(circle at 94% 2%,#DAE6FF 0,transparent 33%),linear-gradient(180deg,#F8FAFF 0%,#F1F5FF 100%);color:var(--deep)}
-html,body,.stApp,.stApp button,.stApp input,.stApp textarea{font-family:'Nunito','DejaVu Sans',sans-serif}
-.block-container{max-width:1380px;padding-top:1.15rem;padding-bottom:2.4rem}
-[data-testid="stHeader"]{background:transparent!important}#MainMenu,footer{visibility:hidden}
-.brand{font-size:1rem;font-weight:900;color:#4165CB;margin-bottom:16px;letter-spacing:.025em}
-.hero{position:relative;isolation:isolate;overflow:hidden;border-radius:29px;padding:34px 40px;background:linear-gradient(112deg,#2D51B9 0%,#496FE0 63%,#7A83E8 100%);color:white;box-shadow:0 20px 38px #3A60B728}
-.hero:after{content:'';position:absolute;z-index:-1;right:-120px;top:-120px;width:460px;height:460px;border:2px solid #FFFFFF28;border-radius:50%;box-shadow:0 0 0 55px #FFFFFF0B,0 0 0 112px #FFFFFF08}
-.hero h1{color:#fff;font-size:clamp(2rem,3.45vw,3.15rem);font-weight:900;letter-spacing:-.028em;margin:8px 0 13px;line-height:1.13}
-.hero p{color:#EAF0FF;font-size:1.035rem;line-height:1.65;margin:0;max-width:890px}
-.hero .over{font-size:.78rem;letter-spacing:.115em;font-weight:900;color:#DCE7FF}
-.hero strong{color:white;font-weight:900}
-.kicker{color:var(--indigo);font-size:.78rem;font-weight:900;letter-spacing:.11em;margin-top:26px}
-.heading{font-size:clamp(1.55rem,2.35vw,2.15rem);font-weight:900;color:var(--deep);margin-bottom:14px}
-/* Общий экран и QR */
-.qrtitle{text-align:center;font-size:1rem;font-weight:900;color:#3159C8;background:#fff;border:1px solid #E2EAF9;padding:12px 12px;border-radius:18px;box-shadow:0 8px 24px #385DA80A}
-.qr-spacer{height:16px}
-.live{color:#158569;background:#E7F8F2;border:1px solid #C9EEE1;border-radius:99px;font-weight:900;padding:7px 13px;font-size:.8rem;display:inline-block}
-.count{font-weight:900;color:#5B719D;margin:12px 0}
-/* Страница ученика */
-.student-hero{padding:30px 40px 32px;min-height:208px;background:linear-gradient(105deg,#294CB2,#496DDD 66%,#8184E8)}
-.student-hero h1{font-size:clamp(2.2rem,3.7vw,3.6rem);margin-top:8px;margin-bottom:13px}
-.student-hero h1 .highlight{color:#FFDB84}
-.student-hero p{font-size:1.06rem;line-height:1.7;max-width:860px}
-.student-hero .hero-decoration{position:absolute;right:80px;top:31px;font-size:6.5rem;opacity:.2;transform:rotate(14deg);pointer-events:none}
-.student-header{padding-top:29px;padding-bottom:11px}
-.student-kicker{font-size:.74rem;letter-spacing:.135em;text-transform:uppercase;color:#5273D6;font-weight:900;margin-bottom:10px}
-.student-heading{font-size:clamp(1.65rem,2.65vw,2.3rem);font-weight:900;letter-spacing:-.025em;color:var(--deep);line-height:1.18;margin-bottom:8px}
-.student-subtitle{font-size:.96rem;color:var(--muted);line-height:1.55;max-width:680px}
-.student-side{padding-top:30px}
-/* Системная Streamlit form оформлена как собственная карточка */
-[data-testid="stForm"]{background:#fff!important;border:1px solid #DDE7FC!important;border-radius:25px!important;padding:25px 27px 27px!important;box-shadow:0 16px 35px #2D4E9810!important}
-.form-welcome{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-bottom:14px;margin-bottom:6px;border-bottom:1px solid #EDF1F9}
-.form-welcome strong{color:#29447A;font-size:1.02rem;font-weight:900}
-.form-welcome span{background:#EEF2FF;color:#5773BC;border-radius:100px;padding:5px 10px;font-size:.78rem;font-weight:900;white-space:nowrap}
-.form-field-label{font-size:.96rem;line-height:1.5;font-weight:900;color:#2A416F;margin-top:13px;margin-bottom:8px}
-.form-field-hint{color:#7A88AB;font-size:.78rem;line-height:1.4;margin-top:-1px;margin-bottom:2px}
-[data-testid="stTextInput"] [data-baseweb="input"],
-[data-testid="stTextArea"] [data-baseweb="textarea"]{background:#F8FAFF!important;border-radius:15px!important}
-[data-testid="stTextInput"] input,[data-testid="stTextArea"] textarea{
-  background:#F8FAFF!important;color:#263B63!important;border:1.5px solid #D9E3F6!important;
-  border-radius:15px!important;box-shadow:none!important;font-size:1rem!important;
-  transition:background .18s,border-color .18s,box-shadow .18s!important
-}
-[data-testid="stTextInput"] input{min-height:53px!important;padding:10px 16px!important}
-[data-testid="stTextArea"] textarea{min-height:132px!important;padding:15px 16px!important;line-height:1.55!important}
-[data-testid="stTextInput"] input::placeholder,[data-testid="stTextArea"] textarea::placeholder{color:#93A0B9!important;opacity:1!important}
-[data-testid="stTextInput"] input:focus,[data-testid="stTextArea"] textarea:focus{
-  background:#fff!important;border-color:#5275E5!important;outline:none!important;
-  box-shadow:0 0 0 4px #4E77E322!important
-}
-[data-testid="stWidgetLabel"] p{color:#2A416F!important;font-weight:800!important}
-.form-privacy{background:#F0F7FF;border:1px solid #E1EDFE;color:#61769D;padding:12px 14px;border-radius:12px;font-size:.83rem;line-height:1.55;margin-top:14px;margin-bottom:12px}
-.stButton button,.stDownloadButton button,.stLinkButton a{border-radius:14px!important;font-weight:900!important;min-height:3rem;transition:transform .15s,box-shadow .2s,background .2s!important}
-[data-testid="stFormSubmitButton"] button,[data-testid="stBaseButton-primaryFormSubmit"]{
-  background:linear-gradient(100deg,#325AD2,#5675E8)!important;border:1px solid transparent!important;
-  color:white!important;min-height:54px!important;font-size:1rem!important;
-  box-shadow:0 9px 20px #375ECC2B!important
-}
-[data-testid="stFormSubmitButton"] button:hover,[data-testid="stBaseButton-primaryFormSubmit"]:hover{
- background:linear-gradient(100deg,#254CC4,#4366DE)!important;box-shadow:0 12px 25px #375ECC40!important;transform:translateY(-1px)
-}
-[data-testid="stFormSubmitButton"] button:focus-visible,[data-testid="stBaseButton-primaryFormSubmit"]:focus-visible{outline:3px solid #9BB1FF!important;outline-offset:3px}
-.stLinkButton a{background:#fff!important;border:1.5px solid #D8E4FA!important;color:#3158C8!important}
-.stLinkButton a:hover{background:#EDF3FF!important;border-color:#B6CAF6!important;transform:translateY(-1px)}
-/* Шаги и памятка */
-.side-card{background:white;border:1px solid #DFE8FB;border-radius:23px;padding:24px 26px;margin:0 0 20px;box-shadow:0 12px 30px #2D4E980C;color:#4E638D}
-.side-card.soft{background:linear-gradient(145deg,#FDFEFF,#EDF5FF)}
-.side-heading{display:flex;gap:12px;align-items:center;font-size:1.08rem;font-weight:900;color:#294376;margin:0 0 19px}
-.side-icon{width:43px;height:43px;min-width:43px;display:inline-grid;place-items:center;border-radius:15px;background:#EFF1FF;font-size:1.35rem}
-.side-step{display:flex;align-items:flex-start;gap:13px;margin-bottom:17px}
-.side-step:last-of-type{margin-bottom:7px}
-.step-index{width:29px;height:29px;min-width:29px;display:grid;place-items:center;border-radius:50%;background:#EAF0FF;color:#3B62D0;font-weight:900;font-size:.83rem}
-.step-text{font-size:.93rem;line-height:1.48;color:#50648E;padding-top:3px}
-.side-note{border-top:1px solid #EDF1F8;margin-top:18px;padding-top:16px;font-size:.88rem;line-height:1.65;color:#62769B}
-.side-card.safety{background:#F5FBF9;border-color:#D8EFE7}
-.side-card.safety .side-icon{background:#E2F5EE}
-.side-card.safety .side-heading{margin-bottom:8px}
-.side-card.safety p{margin:0;font-size:.92rem;color:#52766C;line-height:1.65}
-.panel{background:white;border:1px solid #DCE5F9;border-radius:23px;padding:18px 23px;margin:15px 0;color:#45618C;line-height:1.8}
-.panel b{color:#263967}
-.footer{text-align:center;font-weight:900;color:#8195C0;padding:24px 0}
-@media(max-width:840px){
- .block-container{padding:1rem .85rem 1.7rem}
- .hero{padding:25px 23px;border-radius:22px}
- .student-hero{min-height:unset;padding:27px 22px}
- .student-hero h1{font-size:2.25rem}
- .student-hero .hero-decoration{right:-20px;top:40px;font-size:4rem}
- .student-header{padding-top:23px;padding-bottom:4px}
- .student-side{padding-top:3px}
- [data-testid="stForm"]{padding:20px 18px 24px!important;border-radius:21px!important}
- .side-card{padding:20px 20px;margin-top:5px}
- .qr-spacer{height:17px}
-}
-@media(prefers-reduced-motion:reduce){.stButton button,.stLinkButton a{transition:none!important}}
-</style>''' 
+# Оформление хранится отдельно: меняйте style.css без редактирования Python-кода.
+def load_css():
+    stylesheet = Path(__file__).with_name('style.css')
+    st.markdown('<style>' + stylesheet.read_text(encoding='utf-8') + '</style>', unsafe_allow_html=True)
 
 POSITIONS = ([(x, 90) for x in (275, 495, 715, 935, 1155)]
              + [(140,y) for y in (200,300,400,500,600,700,800)]
@@ -231,20 +136,29 @@ def wall(student_url):
     with left:
         st.markdown(f'<div class="hero"><div class="over">✨ НАШ ШКОЛЬНЫЙ УРОК</div><h1>{esc(s["topic"])} 💭</h1><p>{esc(s["question"])} Поделись мыслью — она появится на нашем общем экране!</p></div>',unsafe_allow_html=True)
     with right:
-        st.markdown('<div class="qrtitle">📱 Сканируй и отвечай</div>',unsafe_allow_html=True)
-        st.image(qr(student_url),use_container_width=True)
-        st.markdown('<div class="qr-spacer" aria-hidden="true"></div>',unsafe_allow_html=True)
-        st.link_button('✍️ Написать ответ',student_url,use_container_width=True)
+        qr_base64 = base64.b64encode(qr(student_url)).decode('ascii')
+        st.markdown(
+            '<div class="qr-panel">'
+            '<div class="qr-title"><span class="qr-title-icon">📱</span>'
+            '<span>Сканируй и отвечай</span></div>'
+            f'<img class="qr-graphic" src="data:image/png;base64,{qr_base64}" '
+            'alt="QR-код для ответа на вопрос урока">'
+            f'<a class="qr-action" href="{esc(student_url)}">'
+            '✍️ Написать ответ</a>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
     st.markdown('<div class="kicker">НАША ОБЩАЯ РЕФЛЕКСИЯ</div><div class="heading">Каждая мысль важна 🌟</div>',unsafe_allow_html=True)
     @st.fragment(run_every='3s')
     def live():
         recent=all_answers(MAX_CARDS);count=total_answers()
         ids={int(r['id']) for r in recent};old=st.session_state.get('previous_ids')
         fresh=ids-old if old is not None else set();st.session_state['previous_ids']=ids
-        st.markdown(f'<div class="count">💬 Всего ответов: {count} · На экране: {len(recent)} &nbsp; <span class="live">● Обновление каждые 3 секунды</span></div>',unsafe_allow_html=True)
+        # Публичный экран не показывает количество ответов и технический статус.
+        st.markdown('<div class="wall-visual-gap" aria-hidden="true"></div>',
+                    unsafe_allow_html=True)
         cluster(recent,fresh,s['school'])
         if not count: st.info('✨ Здесь скоро появятся первые ответы!')
-        if count>MAX_CARDS: st.caption(f'Показаны последние {MAX_CARDS} ответов из {count}. Все ответы доступны учителю.')
         with st.expander('📃 Смотреть ответы списком'):
             for r in recent: st.markdown(f'**{esc(r["name"])}:** {esc(r["answer"])}')
     live()
@@ -386,7 +300,7 @@ def admin(wall_url):
     st.link_button('↗ Открыть общий экран',wall_url)
 
 def main():
-    init();st.markdown(CSS,unsafe_allow_html=True)
+    init();load_css()
     wall_url,student_url,_=urls()
     view=st.query_params.get('view','wall')
     if view=='student':student(wall_url)
