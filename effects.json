@@ -8,5 +8,6 @@
   "max_celebrations_per_refresh": 3,
   "arrival_duration_ms": 1450,
   "toast_duration_ms": 3600,
-  "refresh_seconds": 3
+  "refresh_seconds": 3,
+  "finale_duration_ms": 18000
 }

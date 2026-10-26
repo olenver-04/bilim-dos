@@ -8,6 +8,7 @@ from __future__ import annotations
 import html
 import json
 import random
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Mapping, Iterable
 
@@ -67,6 +68,7 @@ def effect_settings():
                 'arrival_duration_ms': (450, 2600),
                 'toast_duration_ms': (1400, 8000),
                 'refresh_seconds': (2, 15),
+                'finale_duration_ms': (12000, 30000),
             }
             lo, hi = limits[key]
             result[key] = max(lo, min(hi, value))
@@ -129,8 +131,25 @@ def character(school):
           <circle cx="780" cy="337" r="9" fill="#FFB44D"/>
         </g>
         <path d="M647 290V270Q719 238 793 270V293" fill="none" stroke="#3158C8" stroke-width="17"/>
-        <path d="M610 460Q563 424 541 453 M828 460Q871 424 898 453" fill="none"
+        <g class="arm-left">
+          <path d="M610 460Q563 424 541 453" fill="none"
               stroke="#3158C8" stroke-width="12" stroke-linecap="round"/>
+          <circle cx="541" cy="453" r="12" fill="#FFD577"/>
+        </g>
+        <g class="arm-right">
+          <path d="M828 460Q871 424 898 453" fill="none"
+              stroke="#3158C8" stroke-width="12" stroke-linecap="round"/>
+          <circle cx="898" cy="453" r="12" fill="#FFD577"/>
+        </g>
+      </g>
+      <g class="mascot-speech" aria-hidden="true">
+        <rect x="838" y="184" rx="20" width="250" height="57"
+              fill="#FFFFFF" stroke="#D6E2FC" stroke-width="3"/>
+        <path d="M861 241L851 262L890 241" fill="#FFFFFF" stroke="#D6E2FC"
+              stroke-width="3" stroke-linejoin="round"/>
+        <path d="M865 242H889" stroke="white" stroke-width="5"/>
+        <text id="mascot-text" x="963" y="221" text-anchor="middle"
+              font-size="22" font-weight="900" fill="#3158C8">У тебя получится!</text>
       </g>
       <g class="school-plaque">
         <rect x="555" y="657" width="330" height="72" rx="30" fill="#3158C8" stroke="white" stroke-width="5"/>
@@ -139,7 +158,7 @@ def character(school):
       </g>'''
 
 
-def build_scene(rows: Iterable[Mapping], fresh_ids: set[int], school: str, effects=None):
+def build_scene(rows: Iterable[Mapping], fresh_ids: set[int], school: str, effects=None, controls=None, lesson="Рефлексия урока"):
     """Вернуть готовую HTML-сцену; подходит и для предварительного просмотра в браузере."""
     effects = effects if effects is not None else effect_settings()
     connection, cards = [], []
@@ -175,6 +194,8 @@ def build_scene(rows: Iterable[Mapping], fresh_ids: set[int], school: str, effec
 
     payload = {
         'effects': effects,
+        'controls': controls or {},
+        'server_now': datetime.now(timezone.utc).isoformat(timespec='milliseconds'),
     }
     # Разрываем любые потенциальные HTML-теги, попавшие внутрь JSON.
     payload_json = (json.dumps(payload, ensure_ascii=False)
@@ -192,13 +213,15 @@ def build_scene(rows: Iterable[Mapping], fresh_ids: set[int], school: str, effec
        aria-label="Рефлексия школьного урока: мысли учеников" preserveAspectRatio="xMidYMid meet">
     <defs>
       <radialGradient id="bg"><stop stop-color="#FFF"/><stop offset="1" stop-color="#EAF2FF"/></radialGradient>
+      <radialGradient id="bg-lavender"><stop stop-color="#FFF"/><stop offset="1" stop-color="#EEE5FF"/></radialGradient>
+      <radialGradient id="bg-mint"><stop stop-color="#FFF"/><stop offset="1" stop-color="#DEF8EE"/></radialGradient>
       <pattern id="dots" width="44" height="44" patternUnits="userSpaceOnUse">
         <circle cx="4" cy="4" r="1.8" fill="#A9BDEB" opacity=".4"/>
       </pattern>
       <radialGradient id="golden"><stop stop-color="#FFE59B" stop-opacity=".45"/>
         <stop offset="1" stop-color="#FFE59B" stop-opacity="0"/></radialGradient>
     </defs>
-    <rect width="1440" height="900" rx="28" fill="url(#bg)"/>
+    <rect class="stage-background" width="1440" height="900" rx="28" fill="url(#bg)"/>
     <rect width="1440" height="900" rx="28" fill="url(#dots)"/>
     <circle cx="720" cy="455" r="346" fill="url(#golden)"/>
     <g class="orbit-one"><ellipse cx="720" cy="455" rx="510" ry="362"
@@ -212,12 +235,24 @@ def build_scene(rows: Iterable[Mapping], fresh_ids: set[int], school: str, effec
   </svg>
   <div id="fx-layer" class="fx-layer" aria-hidden="true"></div>
   <div id="toast-area" class="toast-area" role="status" aria-live="polite" aria-atomic="true"></div>
+  <div id="finale-layer" class="finale-layer" aria-live="off" aria-hidden="true">
+    <div class="finale-halo"></div>
+    <div class="finale-inner">
+      <div class="finale-kicker">БІЛІМ ДОС · МЫ ВМЕСТЕ!</div>
+      <div class="finale-symbol">🌟</div>
+      <h2>Спасибо за ваши мысли!</h2>
+      <p>Каждый ответ сделал этот урок ярче!</p>
+      <div class="finale-lesson">{esc(short(lesson, 80))}</div>
+      <div class="finale-signature">💙 Учимся · Делимся · Растём вместе 💛</div>
+    </div>
+  </div>
 </div>
 <script id="scene-data" type="application/json">{payload_json}</script>
 <script>{js}</script>
 </body></html>'''
 
 
-def render_scene(rows, fresh_ids: set[int], school: str, effects=None):
+def render_scene(rows, fresh_ids: set[int], school: str, effects=None, controls=None, lesson="Рефлексия урока", height=700):
     import streamlit.components.v1 as components
-    components.html(build_scene(rows, fresh_ids, school, effects=effects), height=700, scrolling=False)
+    components.html(build_scene(rows, fresh_ids, school, effects=effects,
+                                controls=controls, lesson=lesson), height=height, scrolling=False)

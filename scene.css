@@ -26,7 +26,7 @@ body { background: #EFF5FF; font-family: 'Trebuchet MS', Arial, sans-serif; }
 .note:not(.fresh):hover { transform: translateY(-5px) scale(1.025); }
 .connection { opacity: .45; stroke-dasharray: 7 10; }
 .scene.motion-on .connection:not(.fresh) { animation: connection-breathe 8s ease-in-out infinite; }
-.scene.motion-on .connection.fresh {
+.scene.motion-on.arrival-on .connection.fresh {
   stroke-dasharray: 1900; stroke-dashoffset: 1900;
   animation: connect-draw var(--flight-time) ease-out var(--delay, 0ms) both;
 }
@@ -42,13 +42,13 @@ body { background: #EFF5FF; font-family: 'Trebuchet MS', Arial, sans-serif; }
 .scene.motion-on.ambient-on .ambient-star { animation: twinkle var(--twinkle-time, 4.5s) ease-in-out var(--twinkle-delay, 0s) infinite; }
 .scene.motion-on.ambient-on .orbit-one { transform-origin: 720px 460px; animation: orbit-drift 90s linear infinite; }
 .scene.motion-on.ambient-on .orbit-two { transform-origin: 720px 460px; animation: orbit-drift 120s linear infinite reverse; }
-.scene.motion-on.ambient-on .mascot { animation: mascot-float 5.8s ease-in-out infinite; }
-.scene.motion-on.ambient-on .book-highlight { animation: book-shimmer 6.5s ease-in-out infinite; }
-.scene.motion-on.ambient-on .eye { transform-box: fill-box; transform-origin: center; animation: blink 7.5s ease-in-out infinite; }
-.scene.motion-on.ambient-on .tassel { transform-origin: 780px 288px; animation: tassel-sway 4.5s ease-in-out infinite; }
-.scene.motion-on.ambient-on .halo { transform-box: fill-box; transform-origin: center; animation: halo-breathe 5s ease-in-out infinite; }
-.scene.motion-on.celebrating .halo { animation: halo-celebrate 1.65s ease-out 1 both; }
-.scene.motion-on.celebrating .mascot { animation: mascot-cheer 1.2s cubic-bezier(.19,.68,.24,1.3) .35s 1 both, mascot-float 5.8s ease-in-out 1.55s infinite; }
+.scene.motion-on.ambient-on.mascot-on .mascot { animation: mascot-float 5.8s ease-in-out infinite; }
+.scene.motion-on.ambient-on.mascot-on .book-highlight { animation: book-shimmer 6.5s ease-in-out infinite; }
+.scene.motion-on.ambient-on.mascot-on .eye { transform-box: fill-box; transform-origin: center; animation: blink 7.5s ease-in-out infinite; }
+.scene.motion-on.ambient-on.mascot-on .tassel { transform-origin: 780px 288px; animation: tassel-sway 4.5s ease-in-out infinite; }
+.scene.motion-on.ambient-on.mascot-on .halo { transform-box: fill-box; transform-origin: center; animation: halo-breathe 5s ease-in-out infinite; }
+.scene.motion-on.mascot-on.celebrating .halo { animation: halo-celebrate 1.65s ease-out 1 both; }
+.scene.motion-on.mascot-on.celebrating .mascot { animation: mascot-cheer 1.2s cubic-bezier(.19,.68,.24,1.3) .35s 1 both, mascot-float 5.8s ease-in-out 1.55s infinite; }
 /* Дополнительный слой с частицами; не перехватывает клики и подсказки карточек. */
 .fx-layer { position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 3; }
 .fx-particle { position: absolute; top: var(--from-y); left: var(--from-x);
@@ -106,4 +106,111 @@ body { background: #EFF5FF; font-family: 'Trebuchet MS', Arial, sans-serif; }
 @media (prefers-reduced-motion: reduce) {
   *,*::before,*::after {animation:none!important;transition:none!important;scroll-behavior:auto!important}
   .note.fresh {opacity:1!important;transform:none!important}
+}
+
+/* BILIM DOS 5.0 — showtime: живой талисман + синхронизированный финал */
+.scene[data-theme="lavender"]{background:radial-gradient(ellipse at 50% 35%,#fff 0%,#F6F1FF 65%,#EDE4FF 100%)}
+.scene[data-theme="mint"]{background:radial-gradient(ellipse at 50% 35%,#fff 0%,#F0FFF9 65%,#E1F8F1 100%)}
+.scene.motion-on.mascot-on .arm-right{
+  transform-box:fill-box;transform-origin:12% 66%;
+  animation:wave-greeting 5.5s ease-in-out infinite;
+}
+.scene.motion-on.mascot-on .mascot-speech{
+  transform-box:fill-box;transform-origin:50% 70%;
+  animation:bubble-breathe 5s ease-in-out infinite;
+}
+.scene.motion-on.mascot-on.receiving .arm-right{
+  animation:wave-excited .63s ease-in-out 4;
+}
+.scene.motion-on.mascot-on.receiving .mascot-speech{
+  animation:bubble-pop .8s cubic-bezier(.15,.92,.29,1.25) both;
+}
+.scene.motion-on.mascot-on.receiving .eye{animation:blink .3s ease-in-out 1}
+@keyframes wave-greeting{
+  0%,78%,100%{transform:rotate(0deg)} 82%,91%{transform:rotate(-15deg)} 87%,96%{transform:rotate(8deg)}
+}
+@keyframes wave-excited{
+  0%,100%{transform:rotate(0deg)} 50%{transform:rotate(-30deg)}
+}
+@keyframes bubble-breathe{
+  0%,100%{opacity:.90;transform:translateY(0)}50%{opacity:1;transform:translateY(-5px)}
+}
+@keyframes bubble-pop{
+  from{opacity:0;transform:translateY(10px) scale(.7)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+/* Финал строго управляется учителем. Таймлайн синхронизируется по серверному UTC.
+   При обновлении iframe сцена продолжает ту же фазу, а не начинает сначала. */
+.finale-layer{position:absolute;inset:0;display:grid;place-items:center;
+  z-index:8;pointer-events:none;opacity:0;visibility:hidden;
+  overflow:hidden;color:#FFF;text-align:center;padding:25px;
+  background:radial-gradient(ellipse at 50% 42%,#5A7FFF 0%,#345CC9 44%,#202F78 100%);
+}
+.finale-halo{position:absolute;width:min(90vw,550px);aspect-ratio:1;border-radius:50%;
+  border:2px solid #FFFFFF55;box-shadow:0 0 0 42px #FFFFFF0B,0 0 0 90px #FFFFFF0A;
+  background:radial-gradient(circle,#FFFFFF22,transparent 69%);
+}
+.finale-inner{position:relative;max-width:min(780px,95%);z-index:2}
+.finale-kicker{letter-spacing:.21em;color:#D7E5FF;font-size:clamp(10px,1.2vw,15px);font-weight:900}
+.finale-symbol{font-size:clamp(65px,10vw,116px);line-height:1.15;filter:drop-shadow(0 12px 30px #FFE39C75)}
+.finale-inner h2{font-size:clamp(30px,5.4vw,72px);letter-spacing:-.04em;
+  margin:10px 0 15px;line-height:1.14;text-wrap:balance;font-weight:900;color:#fff}
+.finale-inner p{font-size:clamp(17px,2.4vw,28px);font-weight:700;color:#E9F0FF;margin:0 auto 24px}
+.finale-lesson{display:inline-block;background:#FFFFFF21;border:1px solid #FFFFFF55;
+  border-radius:99px;padding:12px 28px;font-size:clamp(13px,1.4vw,20px);font-weight:800;
+  backdrop-filter:blur(12px)}
+.finale-signature{font-size:clamp(11px,1.4vw,17px);margin-top:40px;font-weight:900;color:#F8E4AD}
+.finale-confetti{position:absolute;top:-10%;left:var(--confetti-x);z-index:3;
+  width:var(--confetti-width,10px);height:var(--confetti-height,17px);
+  border-radius:2px;background:var(--confetti-color,#FFE38C);opacity:0;
+  box-shadow:0 0 14px #FFFFFF44;transform:translate3d(0,0,0) rotate(0);
+}
+.scene.motion-on.finale-active .finale-layer,
+.scene:not(.motion-on).finale-static .finale-layer{
+  visibility:visible;
+}
+.scene.motion-on.finale-active .finale-layer{
+  animation:finale-enter var(--finale-duration,18000ms) linear var(--finale-offset,0ms) both;
+}
+.scene.motion-on.finale-active .finale-symbol{
+  animation:finale-star var(--finale-duration,18000ms) ease-in-out var(--finale-offset,0ms) both;
+}
+.scene.motion-on.finale-active .note{
+  transform-box:fill-box;transform-origin:center;
+  animation:finale-gather var(--finale-duration,18000ms) ease-in-out var(--finale-offset,0ms) both!important;
+}
+.scene.motion-on.finale-active .finale-confetti{
+  animation:confetti-dance var(--finale-duration,18000ms) linear calc(var(--finale-offset,0ms) + var(--confetti-phase,0ms)) both;
+}
+.scene.motion-on.finale-active .mascot{
+  animation:finale-character var(--finale-duration,18000ms) ease var(--finale-offset,0ms) both;
+}
+.scene.finale-static .finale-layer{opacity:1;visibility:visible}
+@keyframes finale-enter{
+  0%,10%{opacity:0;visibility:hidden} 17%,78%{opacity:1;visibility:visible}
+  90%,100%{opacity:0;visibility:hidden}
+}
+@keyframes finale-star{
+  0%,14%{transform:scale(.3) rotate(-50deg);opacity:0}
+  22%{transform:scale(1.18) rotate(10deg);opacity:1}
+  29%,72%{transform:scale(1) rotate(0);opacity:1}
+  82%,100%{transform:scale(.5) rotate(40deg);opacity:0}
+}
+@keyframes finale-gather{
+  0%,6%{opacity:1;transform:translate(0,0) scale(1)}
+  18%,75%{opacity:0;transform:translate(var(--fly-x),var(--fly-y)) scale(.12)}
+  84%,100%{opacity:1;transform:translate(0,0) scale(1)}
+}
+@keyframes finale-character{
+  0%,6%{transform:translateY(0)} 14%{transform:translateY(-32px) scale(1.08)}
+  24%,77%{transform:translateY(0)} 85%{transform:translateY(-13px)}100%{transform:translateY(0)}
+}
+@keyframes confetti-dance{
+  0%,14%{opacity:0;transform:translate(0,-30px) rotate(0)}
+  19%{opacity:.95} 66%{opacity:.9}
+  80%,100%{opacity:0;transform:translate(var(--confetti-shift),840px) rotate(var(--confetti-spin))}
+}
+@media(prefers-reduced-motion:reduce){
+  .scene.finale-static .finale-layer{display:grid;opacity:1;visibility:visible}
+  .scene .mascot-speech,.scene .arm-right{animation:none!important}
 }

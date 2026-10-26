@@ -6,6 +6,8 @@ from io import BytesIO, StringIO
 from pathlib import Path
 import qrcode
 from scene import render_scene, effect_settings
+from control import read_controls, save_controls, signal_event
+from schema import initialize_schema
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -30,9 +32,7 @@ def connect():
 
 def init():
     with connect() as con:
-        con.execute('CREATE TABLE IF NOT EXISTS responses (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, answer TEXT NOT NULL, created TEXT NOT NULL)')
-        con.execute('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)')
-        con.executemany('INSERT OR IGNORE INTO settings(key,value) VALUES (?,?)', DEFAULTS.items())
+        initialize_schema(con, DEFAULTS)
 
 def settings():
     with connect() as con:
@@ -45,6 +45,10 @@ def all_answers(limit=None):
         if limit is None:
             return con.execute('SELECT * FROM responses ORDER BY id DESC').fetchall()
         return con.execute('SELECT * FROM responses ORDER BY id DESC LIMIT ?', (limit,)).fetchall()
+
+def get_controls():
+    with connect() as con:
+        return read_controls(con)
 
 def total_answers():
     with connect() as con:
@@ -91,8 +95,12 @@ def load_css():
 def header(label, s):
     st.markdown(f'<div class="brand">📚 {esc(s["school"])} &nbsp;·&nbsp; {esc(label)}</div>',unsafe_allow_html=True)
 
-def wall(student_url):
-    s=settings();header('ОБЩИЙ ЭКРАН',s)
+def wall(student_url, projector=False):
+    s=settings()
+    if not projector:
+        header('ОБЩИЙ ЭКРАН',s)
+    else:
+        st.markdown('<div class="projector-pill">🖥️ РЕЖИМ ПРОЕКТОРА · РЕФЛЕКСИЯ УРОКА</div>',unsafe_allow_html=True)
     left,right=st.columns([4.6,1.2],gap='large',vertical_alignment='center')
     with left:
         st.markdown(f'<div class="hero"><div class="over">✨ НАШ ШКОЛЬНЫЙ УРОК</div><h1>{esc(s["topic"])} 💭</h1><p>{esc(s["question"])} Поделись мыслью — она появится на нашем общем экране!</p></div>',unsafe_allow_html=True)
@@ -114,12 +122,15 @@ def wall(student_url):
     @st.fragment(run_every=f"{effects['refresh_seconds']}s")
     def live():
         recent=all_answers(MAX_CARDS)
+        controls = get_controls()
         ids={int(r['id']) for r in recent};old=st.session_state.get('previous_ids')
         fresh=ids-old if old is not None else set();st.session_state['previous_ids']=ids
         # Публичный экран не показывает количество ответов и технический статус.
         st.markdown('<div class="wall-visual-gap" aria-hidden="true"></div>',
                     unsafe_allow_html=True)
-        render_scene(recent, fresh, s['school'], effects=effects)
+        render_scene(recent, fresh, s['school'], effects=effects,
+                     controls=controls, lesson=s['topic'],
+                     height=790 if projector else 700)
         if not recent: st.info('✨ Здесь скоро появятся первые ответы!')
         with st.expander('📃 Смотреть ответы списком'):
             for r in recent: st.markdown(f'**{esc(r["name"])}:** {esc(r["answer"])}')
@@ -180,8 +191,15 @@ def student(wall_url):
             except sqlite3.Error:
                 st.error('Ошибка сохранения. Попробуй ещё раз.')
             else:
-                st.success('🎉 Готово! Твой ответ появился на общем экране.')
-                st.balloons()
+                st.session_state['delivered_name'] = clean(name)
+        if st.session_state.pop('delivered_name', None):
+            st.markdown(
+                '<div class="magic-success" role="status">'
+                '<div class="magic-success-spark">✨</div>'
+                '<div><b>Твоя мысль отправлена!</b><br>'
+                'Сейчас она превратится в сияющую карточку на общем экране.</div>'
+                '</div>', unsafe_allow_html=True,
+            )
         st.link_button('👀 Посмотреть ответы нашего класса',wall_url,use_container_width=True)
     with right:
         st.markdown(
@@ -242,6 +260,75 @@ def admin(wall_url):
             with connect() as con:
                 con.executemany('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value', [('school',clean(school)),('topic',clean(topic)),('question',clean(question))])
             st.rerun()
+    st.divider()
+    st.subheader('🎛️ Пульт визуальных эффектов')
+    controls = get_controls()
+    st.caption('Настройки действуют сразу на всех открытых общих экранах после очередного обновления (до 3 секунд).')
+    with st.form('show_controls'):
+        col_a, col_b = st.columns(2, gap='large')
+        with col_a:
+            fx_enabled = st.toggle('✨ Визуальные эффекты', value=controls['fx_enabled'])
+            fx_mascot = st.toggle('🤖 Живой персонаж', value=controls['fx_mascot'])
+            fx_arrival = st.toggle('🌠 Волшебный полёт отзывов', value=controls['fx_arrival'])
+            fx_ambient = st.toggle('🌌 Движение фона', value=controls['fx_ambient'])
+        with col_b:
+            fx_particles = st.toggle('🎉 Частицы и вспышки', value=controls['fx_particles'])
+            fx_toast = st.toggle('💌 Уведомление о новом ответе', value=controls['fx_toast'])
+            fx_finale = st.toggle('🏆 Финальное шоу', value=controls['fx_finale'])
+            fx_particle_count = st.slider('Количество частиц', 0, 32, controls['fx_particle_count'], 2)
+        fx_arrival_duration_ms = st.slider(
+            'Скорость появления карточки, мс (меньше — быстрее)',
+            min_value=500, max_value=2400,
+            value=controls['fx_arrival_duration_ms'], step=50,
+        )
+        theme_names = {'sky': '☁️ Голубое небо', 'lavender': '💜 Лавандовая сказка',
+                       'mint': '🌿 Мятная лаборатория'}
+        fx_theme = st.selectbox('Цветовая атмосфера', list(theme_names),
+                                index=list(theme_names).index(controls['fx_theme']),
+                                format_func=lambda value: theme_names[value])
+        save_fx = st.form_submit_button('💾 Применить оформление', type='primary',
+                                       use_container_width=True)
+    if save_fx:
+        with connect() as con:
+            save_controls(con, {
+                'fx_enabled': fx_enabled, 'fx_mascot': fx_mascot,
+                'fx_arrival': fx_arrival, 'fx_ambient': fx_ambient,
+                'fx_particles': fx_particles, 'fx_toast': fx_toast,
+                'fx_finale': fx_finale, 'fx_particle_count': fx_particle_count,
+                'fx_arrival_duration_ms': fx_arrival_duration_ms,
+                'fx_theme': fx_theme,
+            })
+        st.success('Параметры шоу сохранены.')
+        st.rerun()
+
+    st.markdown('<div class="panel"><b>🎬 Режиссёрский пульт</b><br>'
+                'Запускай эффекты с телефона или ноутбука: общий экран обновится автоматически. '
+                'Пробный эффект не добавляет вымышленных учеников или ответов.</div>',
+                unsafe_allow_html=True)
+    demo_col, show_col, stop_col = st.columns(3, gap='small')
+    with demo_col:
+        demo_clicked = st.button('✨ Проверить эффекты', use_container_width=True)
+    with show_col:
+        finale_clicked = st.button('🎉 Финальное шоу', type='primary',
+                                    use_container_width=True,
+                                    disabled=not controls['fx_finale'])
+    with stop_col:
+        stop_clicked = st.button('⏹ Остановить шоу', use_container_width=True)
+    if demo_clicked or finale_clicked or stop_clicked:
+        action = 'demo' if demo_clicked else ('show' if finale_clicked else 'stop')
+        with connect() as con:
+            signal_event(con, action)
+        if action == 'demo':
+            st.success('Пробная реакция отправлена на общий экран.')
+        elif action == 'show':
+            st.success('Финальное шоу запущено! На экране появится праздничная сцена.')
+        else:
+            st.success('Шоу остановлено.')
+    projector_url = wall_url + '?mode=projector'
+    st.link_button('🖥️ Открыть режим проектора', projector_url,
+                   use_container_width=True)
+    st.caption('Для полного экрана в браузере нажми F11. Финальная анимация длится 18 секунд.')
+
     data=all_answers();st.metric('💬 Ответы учеников',len(data))
     st.download_button('⬇️ Скачать все ответы (CSV)',export(data),file_name='bilim_dos_reflection.csv',mime='text/csv',disabled=not data,use_container_width=True)
     st.divider()
@@ -267,6 +354,6 @@ def main():
     view=st.query_params.get('view','wall')
     if view=='student':student(wall_url)
     elif view=='admin':admin(wall_url)
-    else:wall(student_url)
+    else:wall(student_url, projector=st.query_params.get('mode')=='projector')
 
 if __name__=='__main__':main()

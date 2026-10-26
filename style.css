@@ -192,3 +192,19 @@ html,body,.stApp,.stApp button,.stApp input,.stApp textarea{font-family:'Nunito'
 @media (prefers-reduced-motion:reduce) {
   .hero,.qr-panel,.qr-title-icon,[data-testid="stForm"],.side-card {animation:none!important}
 }
+
+/* BILIM DOS 5.0 — мягкое подтверждение магической отправки */
+.magic-success{
+  display:flex;gap:16px;align-items:center;background:linear-gradient(95deg,#E8FBF4,#F0F6FF);
+  border:1px solid #BDE5D9;padding:18px 20px;margin:18px 0;border-radius:20px;
+  color:#216855;font-size:.93rem;line-height:1.6;box-shadow:0 12px 25px #26A88212;
+}
+.magic-success b{font-size:1.14rem;color:#175F4C}
+.magic-success-spark{font-size:2.1rem;flex:0 0 auto;filter:drop-shadow(0 3px 5px #FFCE7880)}
+.projector-pill{font-size:.78rem;font-weight:900;letter-spacing:.12em;color:#4269D1;margin-bottom:12px}
+@media(prefers-reduced-motion:no-preference){
+  .magic-success{animation:success-reveal .65s cubic-bezier(.17,.85,.24,1.1) both}
+  .magic-success-spark{animation:success-spark 1.5s ease-in-out 3}
+}
+@keyframes success-reveal{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes success-spark{0%,100%{transform:scale(1) rotate(0)}50%{transform:scale(1.2) rotate(12deg)}}
